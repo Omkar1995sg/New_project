@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Attendance — Only Gmail & Roll No Visible</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    button[disabled] { opacity:.5; }
+  </style>
+</head>
+<body>
+  <h2>Mark Attendance</h2>
+  <form id="rollForm">
+    <label for="roll">Roll No:</label>
+    <select id="roll" required>
+      <option value="">--Select Roll No--</option>
+    </select><br><br>
+    <button type="submit">Mark Present</button>
+  </form>
+
+<script>
+(function () {
+  const dropdown = document.getElementById('roll');
+  for (let i = 1; i <= 600; i++) {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = `J${i}`;
+    dropdown.appendChild(opt);
+  }
+
+  const formBase      = "https://docs.google.com/forms/d/e/1FAIpQLSdQeaLekkBw6LWSkvdzj_II7SXcW3avndf63dQmColcWgB1Tw/viewform";
+  const entryRoll     = "entry.846968130";  // Roll No
+  const entryLocation = "entry.718692023";  // Lat,Lng
+  const entryAddress  = "entry.1049514207"; // Address
+
+  document.getElementById('rollForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const roll = dropdown.value;
+    if (!roll) { alert('Please select your roll number.'); return; }
+
+    if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      const location = `${lat},${lng}`;
+
+      let address = 'Unknown';
+      try {
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+          { headers: { 'User-Agent':'attendance-app/1.0' } }
+        );
+        const data = await resp.json();
+        address = data.display_name || 'Unknown';
+      } catch (err) {
+        console.warn('Geocoding failed:', err);
+      }
+
+      const url = formBase +
+        `?usp=pp_url` +
+        `&${entryRoll}=${encodeURIComponent(roll)}` +
+        `&${entryLocation}=${encodeURIComponent(location)}` +
+        `&${entryAddress}=${encodeURIComponent(address)}` +
+        `&submit=Submit`;
+
+      window.open(url, '_blank');
+    },
+    err => alert('Location error: ' + err.message),
+    { enableHighAccuracy: true, timeout: 10000 });
+  });
+})();
+</script>
+</body>
+</html>
